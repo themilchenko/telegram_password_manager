@@ -29,21 +29,27 @@ func main() {
 
 	// Let's go through each update that we're getting from Telegram.
 	for update := range updates {
-		// Telegram can send many types of updates depending on what your Bot
-		// is up to. We only want to look at messages for now, so we can
-		// discard any other updates.
-		if update.Message == nil {
+		// We handle only messages and commands at this moment
+		if update.Message == nil || !update.Message.IsCommand() {
 			continue
 		}
 
 		// Now that we know we've gotten a new message, we can construct a
 		// reply! We'll take the Chat ID and Text from the incoming message
 		// and use it to create a new message.
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		// We'll also say that this message is a reply to the previous message.
-		// For any other specifications than Chat ID or Text, you'll need to
-		// set fields on the `MessageConfig`.
-		msg.ReplyToMessageID = update.Message.MessageID
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+
+
+		switch update.Message.Command() {
+		case "set":
+			msg.Text = "ok set"
+		case "get":
+			msg.Text = "ok get"
+		case "del":
+			msg.Text = "ok del"
+		default:
+			msg.Text = "I don't know that command"
+		}
 
 		// Okay, we're sending our message off! We don't care about the message
 		// we just sent, so we'll discard it.
