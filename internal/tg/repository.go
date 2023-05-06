@@ -1,6 +1,7 @@
 package tg
 
 import (
+	"errors"
 	"telegram_password_manager/internal/models"
 
 	"github.com/tarantool/go-tarantool"
@@ -26,7 +27,52 @@ func (db *DB) Close() error {
 	return nil
 }
 
-func (db *DB) GetState(chatID int64) (models.State, error) 
+func (db *DB) GetState(chatID int64) (models.State, error) {
+	var res []models.State
+	err := db.client.SelectTyped("users", "primary", 0, 1, tarantool.IterEq, tarantool.IntKey{int(chatID)}, &res)
+	if err != nil {
+		return models.State{}, nil
+	}
+	if len(res) == 0 {
+		return models.State{}, errors.New("ErrNotFound")
+	}
+	if len(res) > 1 {
+		return models.State{}, errors.New("ErrManyRows")
+	}
 
-func (db *DB) CreateState(chatID int64) (models.State, error)
+	return models.State{
+		ChatID: res[0].ChatID,
+		ChatState: res[0].ChatState,
+	}, nil
+}
+
+func (db *DB) CreateState(state models.State) (error) {
+	err := db.client.InsertTyped("users", []interface{}{tarantool.IntKey{int(state.ChatID)}, state.ChatState, state.SecretKey}, &models.State{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) ReplaceState(state models.State) (models.State, error) {
+	var res models.State
+	err := db.client.ReplaceTyped("users", state, &res)
+	if err != nil {
+		return models.State{}, err
+	}
+	return res, nil
+}
+
+func (db *DB) CreatePassword(pass models.Password) error {
+	return nil
+}
+
+func (db *DB) GetPassword(pass models.Password) (models.Password, error) {
+	return models.Password{}, nil
+}
+
+func (db *DB) ReplacePassword(pass models.Password) error {
+	return nil
+}
+
 

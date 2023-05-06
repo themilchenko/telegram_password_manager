@@ -13,14 +13,14 @@ const (
 	StateRightDel
 )
 
-type TgMessage struct {
-	MessageID int
-	UserID uint64 
-	ChatID uint64
-	Text string
+type State struct {
+	ChatID int64 `msgpack:"chat_id"`
+	ChatState StateType `msgpack:"state"`
+	SecretKey string `msgpack:"secret_key"`
 }
 
-type State struct {
-	ChatID int64
-	ChatState StateType
+type Password struct {
+	ChatID int64 `msgpack:"chat_id"`
+	ServiceName string `msgpack:"service_name"`
+	Password string `msgpack:"password"`
 }
