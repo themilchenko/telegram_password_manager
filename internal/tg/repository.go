@@ -47,7 +47,11 @@ func (db *DB) GetState(chatID int64) (models.State, error) {
 }
 
 func (db *DB) CreateState(state models.State) (error) {
-	err := db.client.InsertTyped("users", []interface{}{tarantool.IntKey{int(state.ChatID)}, state.ChatState, state.SecretKey}, &models.State{})
+	_, err := db.client.Insert("users", []interface{}{
+		state.ChatID, 
+		state.ChatState,
+		state.SecretKey,
+	})
 	if err != nil {
 		return err
 	}
@@ -56,7 +60,11 @@ func (db *DB) CreateState(state models.State) (error) {
 
 func (db *DB) ReplaceState(state models.State) (models.State, error) {
 	var res models.State
-	err := db.client.ReplaceTyped("users", state, &res)
+	_, err := db.client.Replace("users", []interface{}{
+		state.ChatID, 
+		state.ChatState,
+		state.SecretKey,
+	})
 	if err != nil {
 		return models.State{}, err
 	}
@@ -64,15 +72,44 @@ func (db *DB) ReplaceState(state models.State) (models.State, error) {
 }
 
 func (db *DB) CreatePassword(pass models.Password) error {
+	_, err := db.client.Insert("passwords", []interface{}{
+		pass.ChatID,
+		pass.ServiceName,
+		pass.Password,
+		})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (db *DB) GetPassword(pass models.Password) (models.Password, error) {
-	return models.Password{}, nil
+	var res models.Password
+	err := db.client.SelectTyped("passwords", "primary", 0, 1, tarantool.IterEq, []interface{}{pass.ChatID, pass.ServiceName}, &res)
+	if err != nil {
+		return models.Password{}, nil
+	}
+	return res, nil
 }
 
 func (db *DB) ReplacePassword(pass models.Password) error {
+	_, err := db.client.Replace("passwords", []interface{}{
+		pass.ChatID, 
+		pass.ServiceName,
+		pass.Password,
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
+func (db *DB) DeletePassword(pass models.Password) error {
+	_, err := db.client.Delete("passwords", "primary", []interface{}{pass.ChatID, pass.ServiceName})
+	if err != nil {
+		return err
+	}
+	return nil
+}
 

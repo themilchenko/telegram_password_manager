@@ -9,6 +9,7 @@ type Repository interface {
 
 	CreatePassword(pass models.Password) error 
 	GetPassword(pass models.Password) (models.Password, error) 
-	ReplacePassword(state models.State) error 
+	ReplacePassword(pass models.Password) error 
+	DeletePassword(pass models.Password) error 
 	Close() error
 }

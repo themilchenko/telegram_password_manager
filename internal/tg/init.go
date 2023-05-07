@@ -24,8 +24,6 @@ type Telegram struct {
 }
 
 func NewBot(tokenAPI string) (*Telegram, error) {
-	userStates := make(map[int64]int, 0)
-
 	// Create connection to tarantool
 	db, err := NewDB("127.0.0.1:3301", &tarantool.Opts{
 		User: "guest",
@@ -35,7 +33,7 @@ func NewBot(tokenAPI string) (*Telegram, error) {
 	}
 
 	// Create conncetion to Telegram API
-	bot, err := tgbot.NewBotAPI("6004504657:AAEk0sk69zTH8EP1WuleOhnOU4_qJ3Ig6p4")
+	bot, err := tgbot.NewBotAPI(tokenAPI)
 	if err != nil {
 		return nil, errors.New("api key is incorrect")
 	}
@@ -45,7 +43,6 @@ func NewBot(tokenAPI string) (*Telegram, error) {
 
 	// Create instanse of server
 	tg := &Telegram{
-		userStates: userStates,
 		bot: bot,
 		updCfg: updateConfig,
 		db: db,
@@ -63,7 +60,7 @@ func (b *Telegram) Run() error {
 	for update := range updates {
 		// We ignore empty messages
 		if update.Message != nil {
-			b.HandleCommand(&update, b.userStates)
+			b.HandleCommand(&update)
 		}
 	}
 	

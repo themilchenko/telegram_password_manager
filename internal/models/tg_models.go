@@ -4,13 +4,22 @@ package models
 type StateType int
 const (
 	StateDeafault StateType = iota
+
+	StateCreateSecretKeySet
+	StateCreateSecretKeyGet
+	StateCreateSecretKeyDel
+
 	StateWaitSetKey
 	StateWaitGetKey
 	StateWaitDelKey
+
 	StateIncorrect
-	StateRightGet
-	StateRightAdd
-	StateRightDel
+
+	StateEnterServiceNameGet
+	StateEnterServiceNameDel
+
+	StateEnterServiceNameSet
+	StateEnterPassword
 )
 
 type State struct {

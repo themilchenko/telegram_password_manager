@@ -1,6 +1,7 @@
 package tg
 
 import (
+	"errors"
 	"telegram_password_manager/internal/crypto"
 	"telegram_password_manager/internal/domain"
 	"telegram_password_manager/internal/models"
@@ -64,6 +65,17 @@ func (u *Usecase) CreateSecretKey(state models.State) error {
 	return nil
 }
 
+func (u *Usecase) CheckExistingKey(chatID int64) error {
+	st, err := u.repository.GetState(chatID)
+	if err != nil {
+		return err
+	}
+
+	if len(st.SecretKey) == 0 {
+		return errors.New("ErrSecKeyCreate")
+	}
+	return nil
+}
 
 func (u *Usecase) ChechSecretKey(state models.State) error {
 	st, err := u.repository.GetState(state.ChatID)
@@ -71,6 +83,41 @@ func (u *Usecase) ChechSecretKey(state models.State) error {
 		return err
 	}
 
-	crypto.CheckHashPassword(state.SecretKey, st.SecretKey)
+	if !crypto.CheckHashPassword(state.SecretKey, st.SecretKey) {
+		return errors.New("ErrIncorrectSecretKey")
+	}
 	return nil
 }
+
+func (u *Usecase) CreateServiceName(pass models.Password) error {
+	err := u.repository.CreatePassword(pass)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *Usecase) AddPassword(pass models.Password) error {
+	err := u.repository.ReplacePassword(pass)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *Usecase) GetPassword(pass models.Password) (models.Password, error) {
+	res, err := u.repository.GetPassword(pass)
+	if err != nil {
+		return models.Password{}, err
+	}
+	return res, nil
+}
+
+func (u *Usecase) DeleteService(pass models.Password) error {
+	err := u.repository.DeletePassword(pass)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
