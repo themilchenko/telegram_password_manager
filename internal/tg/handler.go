@@ -1,9 +1,11 @@
 package tg
 
 import (
+	"fmt"
 	"log"
 	"telegram_password_manager/internal/domain"
 	"telegram_password_manager/internal/models"
+	"time"
 
 	bot "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -13,9 +15,9 @@ const (
 	createPrivateKeyMsg = "Create your password to get access to the password manager. Remember that this password (secret key) will be a key for all your passwords that you will communicate with. Don't loose it."
 	privateKeyMsg       = "Enter your secret key"
 	incorrectSecretKey  = "Your secret key is incorrect"
-	serviceNameMsgSet = "Enter the name of service you want to create password"
-	serviceNameMsgDel = "Enter the name of service you want to delete password"
-	serviceNameMsgGet = "Enter the name of service you want to get password"
+	serviceNameMsgSet   = "Enter the name of service you want to create password"
+	serviceNameMsgDel   = "Enter the name of service you want to delete password"
+	serviceNameMsgGet   = "Enter the name of service you want to get password"
 )
 
 type Handler struct {
@@ -43,9 +45,10 @@ func (h *Telegram) HandleCommand(update *bot.Update) {
 
 	var msg string
 	var st models.StateType
+	isPass := false
+
 	switch state.ChatState {
 	case models.StateDeafault:
-		// Handling command request and wait for secret key
 		switch update.Message.Command() {
 		case "set":
 			err = h.usecase.CheckExistingKey(chatID)
@@ -58,62 +61,116 @@ func (h *Telegram) HandleCommand(update *bot.Update) {
 					log.Print(err.Error())
 				}
 			} else {
-				st = models.StateWaitSetKey
-				msg = privateKeyMsg
+				st = models.StateEnterServiceNameSet
+				msg = "Enter the name of new service"
 			}
 		case "get":
-			err = h.usecase.CheckExistingKey(chatID)
+			res, err := h.usecase.GetServicesByChatID(chatID)
 			if err != nil {
 				switch err.Error() {
-				case "ErrSecKeyCreate":
-					st = models.StateCreateSecretKeyGet
-					msg = createPrivateKeyMsg
+				case "ErrNotFound":
+					st = models.StateDeafault
+					msg = "You haven't created service"
 				default:
 					log.Print(err.Error())
 				}
 			} else {
-				st = models.StateWaitSetKey
-				msg = privateKeyMsg
+				st = models.StateEnterServiceNameGet
+				msg = "Choose service. Enter its name\n"
+				for num, item := range res {
+					msg += fmt.Sprintf("%d) %s\n", num+1, item.ServiceName)
+				}
 			}
 		case "del":
-			err = h.usecase.CheckExistingKey(chatID)
+			res, err := h.usecase.GetServicesByChatID(chatID)
 			if err != nil {
 				switch err.Error() {
-				case "ErrSecKeyCreate":
-					st = models.StateCreateSecretKeyDel
-					msg = createPrivateKeyMsg
+				case "ErrNotFound":
+					st = models.StateDeafault
+					msg = "You haven't created service"
 				default:
 					log.Print(err.Error())
 				}
 			} else {
-				st = models.StateWaitSetKey
-				msg = privateKeyMsg
+				st = models.StateEnterServiceNameDel
+				msg = "Choose service. Enter its name\n"
+				for num, item := range res {
+					msg += fmt.Sprintf("%d) %s\n", num+1, item.ServiceName)
+				}
 			}
+		case "help":
+			msg = "Enter /set to create password\nEnter /get to get password\nEnter /del to delete service"
 		default:
 			msg = "I don't know that command"
 		}
 	case models.StateWaitGetKey:
-		err = h.usecase.ChechSecretKey(state)
+		err = h.usecase.CheckSecretKey(chatID, update.Message.Text)
 		if err != nil {
 			switch err.Error() {
-			case "ErrSecKeyReqiuered":
-				st = models.StateCreateSecretKeyGet
-				msg = privateKeyMsg
 			case "ErrIncorrectSecretKey":
 				st = models.StateDeafault
 				msg = incorrectSecretKey
+				
 			default:
 				log.Print(err.Error())
 			}
-		}
-	case models.StateCreateSecretKeyDel:
-		state.SecretKey = update.Message.Text
-		err = h.usecase.CreateSecretKey(state)
-		if err != nil {
-			log.Println(err.Error())
 		} else {
-			st = models.StateEnterServiceNameDel
-			msg = serviceNameMsgDel
+			go h.deleteMessage(chatID, int(update.Message.MessageID), 2*time.Second)
+			p, err := h.usecase.GetPassword(models.Password{
+				ChatID:      chatID,
+				ServiceName: state.RequestService,
+			}, update.Message.Text)
+			if err != nil {
+				log.Print(err.Error())
+			}
+			st = models.StateDeafault
+			msg = p.Password
+			isPass = true
+		}
+	case models.StateWaitDelKey:
+		err = h.usecase.CheckSecretKey(chatID, update.Message.Text)
+		if err != nil {
+			switch err.Error() {
+			case "ErrIncorrectSecretKey":
+				msg = "Incorrect secret key. Try again"
+				st = models.StateDeafault
+			}
+		} else {
+			go h.deleteMessage(chatID, int(update.Message.MessageID), 2*time.Second)
+			err = h.usecase.DeleteService(models.Password{
+				ChatID:      chatID,
+				ServiceName: state.RequestService,
+			})
+			if err != nil {
+				log.Print(err.Error())
+			}
+			msg = fmt.Sprintf("Service %s successfully deleted", state.RequestService)
+			st = models.StateDeafault
+		}
+	case models.StateWaitSetKey:
+		err = h.usecase.CheckSecretKey(chatID, update.Message.Text)
+		if err != nil {
+			switch err.Error() {
+			case "ErrIncorrectSecretKey":
+				msg = "Incorrect secret key. Try again"
+				st = models.StateDeafault
+				err = h.usecase.DeleteService(models.Password{
+					ChatID:      chatID,
+					ServiceName: state.RequestService,
+				})
+			}
+		} else {
+			go h.deleteMessage(chatID, int(update.Message.MessageID), 2*time.Second)
+			p, _ := h.usecase.GetSimplePassword(models.Password{
+				ChatID:      chatID,
+				ServiceName: state.RequestService,
+			})
+			err = h.usecase.AddPassword(p, update.Message.Text)
+			if err != nil {
+				log.Print(err.Error())
+			}
+			msg = "Created"
+			st = models.StateDeafault
 		}
 	case models.StateCreateSecretKeySet:
 		state.SecretKey = update.Message.Text
@@ -121,73 +178,121 @@ func (h *Telegram) HandleCommand(update *bot.Update) {
 		if err != nil {
 			log.Println(err.Error())
 		} else {
-			st = models.StateEnterServiceNameSet
-			msg = serviceNameMsgSet
-		}
-	case models.StateCreateSecretKeyGet:
-		state.SecretKey = update.Message.Text
-		err = h.usecase.CreateSecretKey(state)
-		if err != nil {
-			log.Println(err.Error())
-		} else {
-			st = models.StateEnterServiceNameGet
-			msg = serviceNameMsgGet
+			go h.deleteMessage(chatID, int(update.Message.MessageID), 2*time.Second)
+			st = models.StateDeafault
+			msg = "Secret key was created. Now you can `/set` password"
 		}
 	case models.StateEnterServiceNameGet:
-		pass := models.Password{
-			ChatID: chatID,
-			ServiceName: update.Message.Text,
-			Password: "",
-		}
-		err = h.usecase.CreateServiceName(pass)
+		err := h.usecase.CheckServiceExists(chatID, update.Message.Text)
 		if err != nil {
-			log.Print(err.Error())
+			if err.Error() == "ErrNotFound" {
+				msg = "There is no service with its name"
+				st = models.StateDeafault
+			} else {
+				log.Print(err.Error())
+			}
+		} else {
+			h.usecase.AddRequestServiceName(models.State{
+				ChatID:         chatID,
+				ChatState:      state.ChatState,
+				RequestService: update.Message.Text,
+			})
+			if err != nil {
+				log.Print(err.Error())
+			}
+			msg = "Enter your secret key"
+			st = models.StateWaitGetKey
 		}
-		st = models.StateEnterPassword
 	case models.StateEnterServiceNameSet:
-		err := h.db.CreatePassword(models.Password{
-			ChatID: chatID,
-			ServiceName: update.Message.Text,
-		})
+		h.usecase.CheckServiceExists(chatID, update.Message.Text)
 		if err != nil {
-			log.Print(err.Error())
+			msg = "You already have service with this name"
+			st = models.StateDeafault
+		} else {
+			err = h.usecase.AddRequestServiceName(models.State{
+				ChatID:         chatID,
+				ChatState:      state.ChatState,
+				RequestService: update.Message.Text,
+			})
+			if err != nil {
+				log.Print(err.Error())
+			}
+			st = models.StateEnterPassword
+			msg = "Enter password 🔐"
 		}
-		st = models.StateEnterPassword	
+	case models.StateEnterServiceNameDel:
+		err := h.usecase.CheckServiceExists(chatID, update.Message.Text)
+		if err != nil {
+			if err.Error() == "ErrNotFound" {
+				msg = "There is no service with its name"
+				st = models.StateDeafault
+			} else {
+				log.Print(err.Error())
+			}
+		} else {
+			h.usecase.AddRequestServiceName(models.State{
+				ChatID:         chatID,
+				ChatState:      state.ChatState,
+				RequestService: update.Message.Text,
+			})
+			if err != nil {
+				log.Print(err.Error())
+			}
+			msg = "Enter your secret key 🔑"
+			st = models.StateWaitDelKey
+		}
 	case models.StateEnterPassword:
-		p, err := h.db.GetPassword(models.Password{ChatID: chatID})
-		if err != nil {
-			log.Print(err.Error())
-		}
-		err = h.db.ReplacePassword(models.Password{
-			ChatID: chatID,
-			ServiceName: p.ServiceName,
-			Password: update.Message.Text,
+		go h.deleteMessage(chatID, int(update.Message.MessageID), 2*time.Second)
+		h.usecase.CreateServiceName(models.Password{
+			ChatID:      state.ChatID,
+			ServiceName: state.RequestService,
+			Password:    update.Message.Text,
 		})
 		if err != nil {
 			log.Print(err.Error())
 		}
-		st = models.StateDeafault
-	// case models.StateWaitDelKey:
-	// case models.StateWaitSetKey:
+		st = models.StateWaitSetKey
+		msg = "Enter secret key 🔑"
 	default:
 	}
 
-	// Edit user's state after each request
-	_, err = h.usecase.ReplaceStateByChatAndState(state.ChatID, st)
+	err = h.usecase.ReplaceStateByChatAndState(chatID, st)
 	if err != nil {
 		log.Print(err.Error())
 	}
-	// return msg
-	if err := h.SendMsg(update, msg); err != nil {
+
+	if isPass {
+		msg += "\nThis message will be deleted after 30 seconds!"
+	}
+
+	msgID, err := h.sendMsg(update, msg)
+	if err != nil {
 		log.Println(err.Error())
 	}
+
+	if isPass {
+		go h.deleteMessage(chatID, int(msgID), 30*time.Second)
+	}
 }
-	
-func (h *Telegram) SendMsg(update *bot.Update, text string) error {
+
+func (h *Telegram) sendMsg(update *bot.Update, text string) (int, error) {
 	msg := bot.NewMessage(update.Message.Chat.ID, "")
 	msg.Text = text
-	if _, err := h.bot.Send(msg); err != nil {
-		return err
+
+	status, err := h.bot.Send(msg)
+	if err != nil {
+		return 0, err
 	}
-	return nil
+
+	return status.MessageID, nil
+}
+
+func (h *Telegram) deleteMessage(chatID int64, messageID int, delay time.Duration) {
+	time.Sleep(delay)
+	msg := bot.NewDeleteMessage(chatID, messageID)
+
+	_, err := h.bot.Send(msg)
+	if err != nil {
+		log.Println(err)
+	}
 }

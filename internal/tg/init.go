@@ -10,8 +10,6 @@ import (
 ) 
 
 type Telegram struct {
-	userStates map[int64]int
-
 	bot *tgbot.BotAPI
 	updCfg tgbot.UpdateConfig
 
@@ -20,7 +18,6 @@ type Telegram struct {
 	Router *Handler
 	usecase Usecase
 	UsecaseDomain domain.Usecase
-	// HandlerDomain domain.Router
 }
 
 func NewBot(tokenAPI string) (*Telegram, error) {

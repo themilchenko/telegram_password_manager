@@ -6,8 +6,8 @@ const (
 	StateDeafault StateType = iota
 
 	StateCreateSecretKeySet
-	StateCreateSecretKeyGet
-	StateCreateSecretKeyDel
+	// StateCreateSecretKeyGet
+	// StateCreateSecretKeyDel
 
 	StateWaitSetKey
 	StateWaitGetKey
@@ -26,6 +26,7 @@ type State struct {
 	ChatID int64 `msgpack:"chat_id"`
 	ChatState StateType `msgpack:"state"`
 	SecretKey string `msgpack:"secret_key"`
+	RequestService string `msgpack:"request_service"`
 }
 
 type Password struct {

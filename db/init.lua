@@ -6,7 +6,8 @@ box.once('init', function ()
   users:format({
     {name = 'chat_id', type = 'number'},
     {name = 'state', type = 'number'},
-    {name = 'secret_key', type = 'string'}
+    {name = 'secret_key', type = 'string'},
+    {name = 'request_service', type = 'string'}
   })
   users:create_index('primary', {
     parts = {'chat_id'}

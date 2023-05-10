@@ -27,7 +27,7 @@ func (u *Usecase) GetStateByChatID(chatID int64) (models.State, error) {
 
 func (u *Usecase) CreateStateByChatID(chatID int64) error {
 	err := u.repository.CreateState(models.State{
-		ChatID: chatID,
+		ChatID:    chatID,
 		ChatState: models.StateDeafault,
 		SecretKey: "",
 	})
@@ -37,15 +37,23 @@ func (u *Usecase) CreateStateByChatID(chatID int64) error {
 	return nil
 }
 
-func (u *Usecase) ReplaceStateByChatAndState(chatID int64, state models.StateType) (models.State, error) {
-	s, err := u.repository.ReplaceState(models.State{
-		ChatID:    chatID,
-		ChatState: state,
+func (u *Usecase) ReplaceStateByChatAndState(chatID int64, state models.StateType) error {
+	err := u.repository.ReplaceState(models.State{
+		ChatID:         chatID,
+		ChatState:      state,
 	})
 	if err != nil {
-		return models.State{}, err
+		return err
 	}
-	return s, nil
+	return nil
+}
+
+func (u *Usecase) AddRequestServiceName(state models.State) error {
+	err := u.repository.ReplaceState(state)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (u *Usecase) CreateSecretKey(state models.State) error {
@@ -53,8 +61,8 @@ func (u *Usecase) CreateSecretKey(state models.State) error {
 	if err != nil {
 		return err
 	}
-	_, err = u.repository.ReplaceState(models.State{
-		ChatID: state.ChatID,
+	err = u.repository.ReplaceState(models.State{
+		ChatID:    state.ChatID,
 		ChatState: state.ChatState,
 		SecretKey: hashed,
 	})
@@ -77,13 +85,12 @@ func (u *Usecase) CheckExistingKey(chatID int64) error {
 	return nil
 }
 
-func (u *Usecase) ChechSecretKey(state models.State) error {
-	st, err := u.repository.GetState(state.ChatID)
+func (u *Usecase) CheckSecretKey(chatID int64, key string) error {
+	st, err := u.repository.GetState(chatID)
 	if err != nil {
 		return err
 	}
-
-	if !crypto.CheckHashPassword(state.SecretKey, st.SecretKey) {
+	if crypto.CheckHashPassword(key, st.SecretKey) != true {
 		return errors.New("ErrIncorrectSecretKey")
 	}
 	return nil
@@ -97,19 +104,39 @@ func (u *Usecase) CreateServiceName(pass models.Password) error {
 	return nil
 }
 
-func (u *Usecase) AddPassword(pass models.Password) error {
-	err := u.repository.ReplacePassword(pass)
+func (u *Usecase) GetSimplePassword(pass models.Password) (models.Password, error) {
+	res, err := u.repository.GetPassword(pass)
+	if err != nil {
+		return models.Password{}, err
+	}
+	return res, nil
+}
+
+func (u *Usecase) AddPassword(pass models.Password, key string) error {
+	encrypted, err := crypto.Encrypt([]byte(key), pass.Password)
+	if err != nil {
+		return err
+	}
+	pass.Password = encrypted
+
+	err = u.repository.ReplacePassword(pass)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *Usecase) GetPassword(pass models.Password) (models.Password, error) {
+func (u *Usecase) GetPassword(pass models.Password, key string) (models.Password, error) {
 	res, err := u.repository.GetPassword(pass)
 	if err != nil {
 		return models.Password{}, err
 	}
+	decrypted, err := crypto.Decrypt([]byte(key), res.Password)
+	if err != nil {
+		return models.Password{}, err
+	}
+	res.Password = decrypted
+
 	return res, nil
 }
 
@@ -121,3 +148,21 @@ func (u *Usecase) DeleteService(pass models.Password) error {
 	return nil
 }
 
+func (u *Usecase) GetServicesByChatID(chatID int64) ([]models.Password, error) {
+	res, err := u.repository.GetServices(chatID)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (u *Usecase) CheckServiceExists(chatID int64, serviceName string) error {
+	_, err := u.repository.GetPassword(models.Password{
+		ChatID: chatID,
+		ServiceName: serviceName,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
