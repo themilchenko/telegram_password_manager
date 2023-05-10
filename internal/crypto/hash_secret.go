@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	// "bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -9,7 +8,6 @@ import (
 	"io"
 
 	"golang.org/x/crypto/bcrypt"
-	// create cipher
 )
 
 const cost = 14

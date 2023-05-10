@@ -60,6 +60,6 @@ func (b *Telegram) Run() error {
 			b.HandleCommand(&update)
 		}
 	}
-	
+
 	return nil
 }
