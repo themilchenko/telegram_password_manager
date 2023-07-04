@@ -2,6 +2,7 @@ package tg
 
 import (
 	"errors"
+
 	"telegram_password_manager/internal/crypto"
 	"telegram_password_manager/internal/domain"
 	"telegram_password_manager/internal/models"
@@ -39,8 +40,8 @@ func (u *Usecase) CreateStateByChatID(chatID int64) error {
 
 func (u *Usecase) ReplaceStateByChatAndState(chatID int64, state models.StateType) error {
 	err := u.repository.ReplaceState(models.State{
-		ChatID:         chatID,
-		ChatState:      state,
+		ChatID:    chatID,
+		ChatState: state,
 	})
 	if err != nil {
 		return err
@@ -158,7 +159,7 @@ func (u *Usecase) GetServicesByChatID(chatID int64) ([]models.Password, error) {
 
 func (u *Usecase) CheckServiceExists(chatID int64, serviceName string) error {
 	_, err := u.repository.GetPassword(models.Password{
-		ChatID: chatID,
+		ChatID:      chatID,
 		ServiceName: serviceName,
 	})
 	if err != nil {

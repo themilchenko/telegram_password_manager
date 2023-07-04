@@ -11,8 +11,20 @@ services:
       - 8080:8080
     depends_on:
       - tarantool
+    networks:
+      - botnet
 
   tarantool:
     image: tarantool/tarantool:latest
     container_name: tarantool
-    command: tarantool db/init.lua
+    command: tarantool /opt/tarantool/init.lua
+    volumes:
+      - ./db/init.lua:/opt/tarantool/init.lua
+    ports:
+      - 3301:3301
+    networks:
+      - botnet
+
+networks:
+  botnet:
+    driver: bridge

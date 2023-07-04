@@ -9,7 +9,7 @@ type Usecase interface {
 	CheckExistingKey(chatID int64) error
 	CreateSecretKey(state models.State) error
 	CheckSecretKey(chatID int64, key string) error
-	GetSimplePassword(pass models.Password) (models.Password, error) 
+	GetSimplePassword(pass models.Password) (models.Password, error)
 	CreateServiceName(pass models.Password) error
 	AddRequestServiceName(state models.State) error
 	AddPassword(pass models.Password, key string) error

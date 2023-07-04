@@ -25,7 +25,6 @@ func CheckHashPassword(password, hash string) bool {
 	return err == nil
 }
 
-
 func padKey(key []byte, blockSize int) []byte {
 	paddedKey := make([]byte, blockSize)
 	copy(paddedKey, key)

@@ -3,11 +3,12 @@ package tg
 import (
 	"fmt"
 	"log"
-	"telegram_password_manager/internal/domain"
-	"telegram_password_manager/internal/models"
 	"time"
 
 	bot "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"telegram_password_manager/internal/domain"
+	"telegram_password_manager/internal/models"
 )
 
 // Messages for responses
@@ -110,7 +111,7 @@ func (h *Telegram) HandleCommand(update *bot.Update) {
 			case "ErrIncorrectSecretKey":
 				st = models.StateDeafault
 				msg = incorrectSecretKey
-				
+
 			default:
 				log.Print(err.Error())
 			}

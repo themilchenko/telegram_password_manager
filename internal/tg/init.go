@@ -2,28 +2,30 @@ package tg
 
 import (
 	"errors"
-
-	domain "telegram_password_manager/internal/domain"
+	"time"
 
 	tgbot "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/tarantool/go-tarantool"
-) 
+
+	domain "telegram_password_manager/internal/domain"
+)
 
 type Telegram struct {
-	bot *tgbot.BotAPI
+	bot    *tgbot.BotAPI
 	updCfg tgbot.UpdateConfig
 
 	db *DB
 
-	Router *Handler
-	usecase Usecase
+	Router        *Handler
+	usecase       Usecase
 	UsecaseDomain domain.Usecase
 }
 
 func NewBot(tokenAPI string) (*Telegram, error) {
 	// Create connection to tarantool
-	db, err := NewDB("127.0.0.1:3301", &tarantool.Opts{
-		User: "guest",
+	db, err := NewDB("tarantool:3301", &tarantool.Opts{
+		User:    "guest",
+		Timeout: 500 * time.Millisecond,
 	})
 	if err != nil {
 		return nil, err
@@ -40,9 +42,9 @@ func NewBot(tokenAPI string) (*Telegram, error) {
 
 	// Create instanse of server
 	tg := &Telegram{
-		bot: bot,
+		bot:    bot,
 		updCfg: updateConfig,
-		db: db,
+		db:     db,
 	}
 
 	tg.Router = NewHandler(tg.UsecaseDomain, bot)

@@ -2,9 +2,10 @@ package tg
 
 import (
 	"errors"
-	"telegram_password_manager/internal/models"
 
 	"github.com/tarantool/go-tarantool"
+
+	"telegram_password_manager/internal/models"
 )
 
 type DB struct {
@@ -29,7 +30,15 @@ func (db *DB) Close() error {
 
 func (db *DB) GetState(chatID int64) (models.State, error) {
 	var res []models.State
-	err := db.client.SelectTyped("users", "primary", 0, 1, tarantool.IterEq, tarantool.IntKey{int(chatID)}, &res)
+	err := db.client.SelectTyped(
+		"users",
+		"primary",
+		0,
+		1,
+		tarantool.IterEq,
+		tarantool.IntKey{int(chatID)},
+		&res,
+	)
 	if err != nil {
 		return models.State{}, nil
 	}
@@ -109,7 +118,15 @@ func (db *DB) CreatePassword(pass models.Password) error {
 
 func (db *DB) GetPassword(pass models.Password) (models.Password, error) {
 	var res []models.Password
-	err := db.client.SelectTyped("passwords", "primary", 0, 1, tarantool.IterEq, []interface{}{pass.ChatID, pass.ServiceName}, &res)
+	err := db.client.SelectTyped(
+		"passwords",
+		"primary",
+		0,
+		1,
+		tarantool.IterEq,
+		[]interface{}{pass.ChatID, pass.ServiceName},
+		&res,
+	)
 	if err != nil {
 		return models.Password{}, nil
 	}
@@ -152,7 +169,15 @@ func (db *DB) DeletePassword(pass models.Password) error {
 
 func (db *DB) GetServices(chatID int64) ([]models.Password, error) {
 	var res []models.Password
-	err := db.client.SelectTyped("passwords", "primary", 0, 50, tarantool.IterEq, tarantool.IntKey{int(chatID)}, &res)
+	err := db.client.SelectTyped(
+		"passwords",
+		"primary",
+		0,
+		50,
+		tarantool.IterEq,
+		tarantool.IntKey{int(chatID)},
+		&res,
+	)
 	if err != nil {
 		return nil, err
 	}
